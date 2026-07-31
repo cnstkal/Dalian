@@ -282,6 +282,7 @@ let state = {
   meta:{hotelName:'', hotelAddr:'', rate:190, days:['1일차'], filterCat:'전체', sortBy:'최신순', tab:'schedule', dayIdx:0}
 };
 let uid = 'dalian-trip-shared'; // 고정 ID: 모든 기기가 이 문서를 공유
+let authReady = false;
 
 function loadLocal(){
   try{
@@ -296,7 +297,7 @@ function toast(msg){
   clearTimeout(window._tt); window._tt = setTimeout(()=>t.classList.remove('show'), 1800);
 }
 
-onAuthStateChanged(auth, u=>{ if(u) uid = u.uid; });
+onAuthStateChanged(auth, u=>{ if(u) authReady = true; });
 signInAnonymously(auth).catch(()=>{});
 
 async function cloudUpload(dataUrl){
@@ -332,7 +333,7 @@ function compressImage(file){
 async function uploadAll(){
   const btn = document.getElementById('btnUpload'); btn.classList.add('busy');
   try{
-    if(!uid){ await new Promise(r=>{ const iv=setInterval(()=>{ if(uid){clearInterval(iv); r();} },200); }); }
+    if(!authReady){ await new Promise(r=>{ const iv=setInterval(()=>{ if(authReady){clearInterval(iv); r();} },200); }); }
     const {schedule,wishes,shop,expenses,todos,meta} = state;
     await setDoc(doc(db,'trips',uid,'sections','schedule'), {data:schedule});
     await setDoc(doc(db,'trips',uid,'sections','wishes'), {data:wishes});
@@ -347,7 +348,7 @@ async function uploadAll(){
 async function downloadAll(){
   const btn = document.getElementById('btnDownload'); btn.classList.add('busy');
   try{
-    if(!uid){ await new Promise(r=>{ const iv=setInterval(()=>{ if(uid){clearInterval(iv); r();} },200); }); }
+    if(!authReady){ await new Promise(r=>{ const iv=setInterval(()=>{ if(authReady){clearInterval(iv); r();} },200); }); }
     const keys = ['schedule','wishes','shop','expenses','todos','meta'];
     for(const k of keys){
       const snap = await getDoc(doc(db,'trips',uid,'sections',k));
