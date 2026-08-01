@@ -206,7 +206,12 @@ const App = () => {
   try { await window.storage.set('gemini-key', e.target.value); } catch (err) { console.error(err); }
  };
 
- if (loading) return null;
+ if (loading) return (
+  <div className="min-h-screen flex flex-col items-center justify-center bg-theme-bg gap-4">
+   <div className="w-12 h-12 border-4 border-theme-accent border-t-transparent rounded-full animate-spin"></div>
+   <p className="text-sm font-bold text-theme-text">waygo 정보를 불러오는 중...</p>
+  </div>
+ );
 
  return (
   <div className="min-h-screen pb-[90px] max-w-2xl mx-auto flex flex-col relative" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} style={{ transform: pull ? `translateY(${pull}px)` : 'none', transition: touchStartY.current ? 'none' : 'transform .25s' }}>
