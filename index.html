@@ -148,7 +148,7 @@ const Lightbox = () => {
  );
 };
 
-const CNY_RATE = 190;
+const CNY_RATE = 210;
 const formatWonRange = (v) => {
  if (v === undefined || v === null || v === '') return '';
  const parts = String(v).split('~').map(s => Number(String(s).replace(/[^0-9.]/g, ''))).filter(n => !isNaN(n) && String(n)!=='');
@@ -480,8 +480,8 @@ const PlacesView = ({ data, updateData }) => {
  const [search, setSearch] = useState('');
  const [filter, setFilter] = useState('전체');
  const [showForm, setShowForm] = useState(false);
- const categories = ['전체','음식점','디저트','카페','관광지','쇼핑','기타'];
- const isFoodCategory = (c) => c==='음식점' || c==='디저트';
+ const categories = ['전체','음식점','카페/디저트','관광지','쇼핑','기타'];
+ const isFoodCategory = (c) => c==='음식점' || c==='카페/디저트';
  const [newPlace, setNewPlace] = useState({ name:'', category:'관광지', address:'', memo:'', fee:'', menu:'', priceRange:'', hoursFrom:'', hoursTo:'', images:[], rating:0 });
  const [editingId, setEditingId] = useState(null);
  const [editPlace, setEditPlace] = useState(null);
@@ -722,8 +722,8 @@ const PlacesView = ({ data, updateData }) => {
 };
 
 const ShoppingView = ({ data, updateData }) => {
- const [newItem, setNewItem] = useState({ name:'', type:'과자/식품', store:'', feature:'', image:'', checked:false });
- const types = ['과자/식품','화장품/뷰티','기념품','의류','기타'];
+ const [newItem, setNewItem] = useState({ name:'', type:'식품', store:'', feature:'', price:'', image:'', checked:false });
+ const types = ['식품','화장품/뷰티','기념품','의류','완구','기타'];
 
  const [uploading, setUploading] = useState(false);
  const handleImage = async (e) => {
@@ -743,7 +743,7 @@ const ShoppingView = ({ data, updateData }) => {
  const addItem = () => {
   if (!newItem.name) return;
   updateData([{ ...newItem, id: generateId() }, ...data]);
-  setNewItem({ name:'', type:'과자/식품', store:'', feature:'', image:'', checked:false });
+  setNewItem({ name:'', type:'식품', store:'', feature:'', price:'', image:'', checked:false });
  };
 
  const toggleCheck = (id) => updateData(data.map(item => item.id===id ? { ...item, checked:!item.checked } : item));
@@ -786,6 +786,10 @@ const ShoppingView = ({ data, updateData }) => {
      <input type="text" placeholder="판매처 (예: 까르푸)" value={newItem.store} onChange={(e) => setNewItem({...newItem, store:e.target.value})} className="bg-gray-50 text-sm p-2 rounded-lg outline-none w-1/2" />
      <input type="text" placeholder="특징/종류" value={newItem.feature} onChange={(e) => setNewItem({...newItem, feature:e.target.value})} className="bg-gray-50 text-sm p-2 rounded-lg outline-none w-1/2" />
     </div>
+    <div className="flex gap-2 items-center">
+     <input type="number" inputMode="numeric" placeholder="가격(원)" value={newItem.price} onChange={(e) => setNewItem({...newItem, price:e.target.value})} className="bg-gray-50 text-sm p-2 rounded-lg outline-none w-1/2" />
+     {newItem.price && <span className="text-xs text-gray-400 w-1/2">≈ {Math.round(Number(newItem.price)/CNY_RATE).toLocaleString()}위안</span>}
+    </div>
     <div className="flex items-center justify-between">
      <input type="file" accept="image/*" onChange={handleImage} disabled={uploading} className="text-xs text-gray-500 w-1/2" />
      {uploading && <p className="text-xs text-gray-400">업로드 중...</p>}
@@ -810,6 +814,10 @@ const ShoppingView = ({ data, updateData }) => {
         <input type="text" placeholder="판매처 (예: 까르푸)" value={editItem.store} onChange={(e) => setEditItem({...editItem, store:e.target.value})} className="bg-gray-50 text-sm p-2 rounded-lg outline-none w-1/2" />
         <input type="text" placeholder="특징/종류" value={editItem.feature} onChange={(e) => setEditItem({...editItem, feature:e.target.value})} className="bg-gray-50 text-sm p-2 rounded-lg outline-none w-1/2" />
        </div>
+       <div className="flex gap-2 items-center">
+        <input type="number" inputMode="numeric" placeholder="가격(원)" value={editItem.price||''} onChange={(e) => setEditItem({...editItem, price:e.target.value})} className="bg-gray-50 text-sm p-2 rounded-lg outline-none w-1/2" />
+        {editItem.price && <span className="text-xs text-gray-400 w-1/2">≈ {Math.round(Number(editItem.price)/CNY_RATE).toLocaleString()}위안</span>}
+       </div>
        <div className="flex items-center gap-2">
         {editItem.image && <img src={editItem.image} onClick={() => openLightbox(editItem.image)} className="w-12 h-12 rounded-lg object-cover cursor-pointer" />}
         <input type="file" accept="image/*" onChange={handleEditImage} disabled={editUploading} className="text-xs text-gray-500 flex-1" />
@@ -826,7 +834,7 @@ const ShoppingView = ({ data, updateData }) => {
          <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{item.type}</span>
          <h4 className={`font-bold ${item.checked?'line-through':''}`}>{item.name}</h4>
         </div>
-        <p className="text-xs text-gray-500 mt-1">{item.store && <span>📍 {item.store} </span>}{item.feature && <span>| 💡 {item.feature}</span>}</p>
+        <p className="text-xs text-gray-500 mt-1">{item.store && <span>📍 {item.store} </span>}{item.feature && <span>| 💡 {item.feature} </span>}{item.price && <span>| 💰 {Number(item.price).toLocaleString()}원 ({Math.round(Number(item.price)/CNY_RATE).toLocaleString()}위안)</span>}</p>
        </div>
        <button onClick={() => removeItem(item.id)} className="text-gray-300 p-2"><Icons.Trash /></button>
       </div>
