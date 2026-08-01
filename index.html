@@ -158,15 +158,15 @@ const Lightbox = () => {
 };
 
 const CNY_RATE = 210;
-const formatWonRange = (v) => {
+const formatCnyRange = (v) => {
  if (v === undefined || v === null || v === '') return '';
  const parts = String(v).split('~').map(s => Number(String(s).replace(/[^0-9.]/g, ''))).filter(n => !isNaN(n) && String(n)!=='');
  if (parts.length === 0) return '';
- const toCny = (n) => Math.round(n / CNY_RATE).toLocaleString();
+ const toWon = (n) => Math.round(n * CNY_RATE).toLocaleString();
  if (parts.length >= 2 && parts[1]) {
-  return `${parts[0].toLocaleString()}~${parts[1].toLocaleString()}원 (${toCny(parts[0])}~${toCny(parts[1])}위안)`;
+  return `${parts[0].toLocaleString()}~${parts[1].toLocaleString()}위안 (${toWon(parts[0])}~${toWon(parts[1])}원)`;
  }
- return `${parts[0].toLocaleString()}원 (${toCny(parts[0])}위안)`;
+ return `${parts[0].toLocaleString()}위안 (${toWon(parts[0])}원)`;
 };
 
 const App = () => {
@@ -521,7 +521,7 @@ const PlacesView = ({ data, updateData }) => {
  const customCategories = [...new Set(data.map(p => p.category).filter(c => c && !baseCategories.includes(c)))];
  const categories = ['전체', ...baseCategories, ...customCategories];
  const isFoodCategory = (c) => c==='음식점' || c==='카페/디저트';
- const [newPlace, setNewPlace] = useState({ name:'', category:'관광지', address:'', memo:'', fee:'', menu:'', priceRange:'', hoursFrom:'', hoursTo:'', images:[], rating:0 });
+ const [newPlace, setNewPlace] = useState({ name:'', nameCn:'', category:'관광지', address:'', memo:'', fee:'', menu:'', priceRange:'', hoursFrom:'', hoursTo:'', images:[], rating:0 });
  const [editingId, setEditingId] = useState(null);
  const [editPlace, setEditPlace] = useState(null);
  const [sortBy, setSortBy] = useState('default');
@@ -544,7 +544,7 @@ const PlacesView = ({ data, updateData }) => {
  const addPlace = () => {
   if (!newPlace.name) return alert('장소명을 입력하세요.');
   updateData([{ ...newPlace, id: generateId() }, ...data]);
-  setNewPlace({ name:'', category:'관광지', address:'', memo:'', fee:'', menu:'', priceRange:'', hoursFrom:'', hoursTo:'', images:[], rating:0 });
+  setNewPlace({ name:'', nameCn:'', category:'관광지', address:'', memo:'', fee:'', menu:'', priceRange:'', hoursFrom:'', hoursTo:'', images:[], rating:0 });
   setShowForm(false);
  };
 
@@ -573,7 +573,7 @@ const PlacesView = ({ data, updateData }) => {
  };
  const removeEditImage = (idx) => setEditPlace(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }));
 
- let filteredData = data.filter(p => (filter==='전체' || p.category===filter) && (p.name.includes(search) || p.memo.includes(search)));
+ let filteredData = data.filter(p => (filter==='전체' || p.category===filter) && (p.name.includes(search) || (p.nameCn||'').includes(search) || p.memo.includes(search)));
  if (isFoodCategory(filter) && sortBy==='price') {
   filteredData = [...filteredData].sort((a,b) => {
    const pa = parseInt((a.priceRange||'').split('~')[0]); const pb = parseInt((b.priceRange||'').split('~')[0]);
@@ -620,14 +620,15 @@ const PlacesView = ({ data, updateData }) => {
       )}
      </div>
      <input type="text" placeholder="장소명 (필수)" value={newPlace.name} onChange={(e) => setNewPlace({...newPlace, name:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none font-bold" />
+     <input type="text" placeholder="중국어 이름 (선택, 예: 星巴克)" value={newPlace.nameCn} onChange={(e) => setNewPlace({...newPlace, nameCn:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
      <input type="text" placeholder="주소" value={newPlace.address} onChange={(e) => setNewPlace({...newPlace, address:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
      {isFoodCategory(newPlace.category) && (
       <div className="flex gap-2">
        <input type="text" placeholder="메인 메뉴" value={newPlace.menu} onChange={(e) => setNewPlace({...newPlace, menu:e.target.value})} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
        <div className="flex-1 flex gap-1 items-center">
-        <input type="number" inputMode="numeric" placeholder="최소금액(원)" value={newPlace.priceRange.split('~')[0]||''} onChange={(e) => setNewPlace({...newPlace, priceRange: e.target.value + '~' + (newPlace.priceRange.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+        <input type="number" inputMode="numeric" placeholder="최소금액(위안)" value={newPlace.priceRange.split('~')[0]||''} onChange={(e) => setNewPlace({...newPlace, priceRange: e.target.value + '~' + (newPlace.priceRange.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
         <span className="text-gray-400 text-xs">~</span>
-        <input type="number" inputMode="numeric" placeholder="최대금액(원)" value={newPlace.priceRange.split('~')[1]||''} onChange={(e) => setNewPlace({...newPlace, priceRange: (newPlace.priceRange.split('~')[0]||'') + '~' + e.target.value})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+        <input type="number" inputMode="numeric" placeholder="최대금액(위안)" value={newPlace.priceRange.split('~')[1]||''} onChange={(e) => setNewPlace({...newPlace, priceRange: (newPlace.priceRange.split('~')[0]||'') + '~' + e.target.value})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
        </div>
       </div>
      )}
@@ -639,9 +640,9 @@ const PlacesView = ({ data, updateData }) => {
      )}
      {!isFoodCategory(newPlace.category) && (
       <div className="flex gap-1 items-center">
-       <input type="number" inputMode="numeric" placeholder="입장료 최소(원, 선택)" value={newPlace.fee.split('~')[0]||''} onChange={(e) => setNewPlace({...newPlace, fee: e.target.value + '~' + (newPlace.fee.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+       <input type="number" inputMode="numeric" placeholder="입장료 최소(위안, 선택)" value={newPlace.fee.split('~')[0]||''} onChange={(e) => setNewPlace({...newPlace, fee: e.target.value + '~' + (newPlace.fee.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
        <span className="text-gray-400 text-xs">~</span>
-       <input type="number" inputMode="numeric" placeholder="입장료 최대(원, 선택)" value={newPlace.fee.split('~')[1]||''} onChange={(e) => setNewPlace({...newPlace, fee: (newPlace.fee.split('~')[0]||'') + '~' + e.target.value})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+       <input type="number" inputMode="numeric" placeholder="입장료 최대(위안, 선택)" value={newPlace.fee.split('~')[1]||''} onChange={(e) => setNewPlace({...newPlace, fee: (newPlace.fee.split('~')[0]||'') + '~' + e.target.value})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
       </div>
      )}
      <div>
@@ -679,14 +680,15 @@ const PlacesView = ({ data, updateData }) => {
         )}
        </div>
        <input type="text" placeholder="장소명 (필수)" value={editPlace.name} onChange={(e) => setEditPlace({...editPlace, name:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none font-bold" />
+       <input type="text" placeholder="중국어 이름 (선택, 예: 星巴克)" value={editPlace.nameCn||''} onChange={(e) => setEditPlace({...editPlace, nameCn:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
        <input type="text" placeholder="주소" value={editPlace.address} onChange={(e) => setEditPlace({...editPlace, address:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
        {isFoodCategory(editPlace.category) && (
         <div className="flex gap-2">
          <input type="text" placeholder="메인 메뉴" value={editPlace.menu} onChange={(e) => setEditPlace({...editPlace, menu:e.target.value})} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
         <div className="flex-1 flex gap-1 items-center">
-         <input type="number" inputMode="numeric" placeholder="최소금액(원)" value={editPlace.priceRange.split('~')[0]||''} onChange={(e) => setEditPlace({...editPlace, priceRange: e.target.value + '~' + (editPlace.priceRange.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+         <input type="number" inputMode="numeric" placeholder="최소금액(위안)" value={editPlace.priceRange.split('~')[0]||''} onChange={(e) => setEditPlace({...editPlace, priceRange: e.target.value + '~' + (editPlace.priceRange.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
          <span className="text-gray-400 text-xs">~</span>
-         <input type="number" inputMode="numeric" placeholder="최대금액(원)" value={editPlace.priceRange.split('~')[1]||''} onChange={(e) => setEditPlace({...editPlace, priceRange: (editPlace.priceRange.split('~')[0]||'') + '~' + e.target.value})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+         <input type="number" inputMode="numeric" placeholder="최대금액(위안)" value={editPlace.priceRange.split('~')[1]||''} onChange={(e) => setEditPlace({...editPlace, priceRange: (editPlace.priceRange.split('~')[0]||'') + '~' + e.target.value})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
         </div>
         </div>
        )}
@@ -698,9 +700,9 @@ const PlacesView = ({ data, updateData }) => {
        )}
        {!isFoodCategory(editPlace.category) && (
         <div className="flex gap-1 items-center">
-         <input type="number" inputMode="numeric" placeholder="입장료 최소(원, 선택)" value={editPlace.fee.split('~')[0]||''} onChange={(e) => setEditPlace({...editPlace, fee: e.target.value + '~' + (editPlace.fee.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+         <input type="number" inputMode="numeric" placeholder="입장료 최소(위안, 선택)" value={editPlace.fee.split('~')[0]||''} onChange={(e) => setEditPlace({...editPlace, fee: e.target.value + '~' + (editPlace.fee.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
          <span className="text-gray-400 text-xs">~</span>
-         <input type="number" inputMode="numeric" placeholder="입장료 최대(원, 선택)" value={editPlace.fee.split('~')[1]||''} onChange={(e) => setEditPlace({...editPlace, fee: (editPlace.fee.split('~')[0]||'') + '~' + e.target.value})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+         <input type="number" inputMode="numeric" placeholder="입장료 최대(위안, 선택)" value={editPlace.fee.split('~')[1]||''} onChange={(e) => setEditPlace({...editPlace, fee: (editPlace.fee.split('~')[0]||'') + '~' + e.target.value})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
         </div>
        )}
        <div>
@@ -729,6 +731,7 @@ const PlacesView = ({ data, updateData }) => {
         <div>
          <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-md font-bold">{place.category}</span>
          <h4 className="font-bold text-lg mt-1">{place.name}</h4>
+         {place.nameCn && <p className="text-xs text-gray-400">{place.nameCn}</p>}
         </div>
         <button onClick={(e) => { e.stopPropagation(); removePlace(place.id); }} className="text-gray-300"><Icons.Trash /></button>
        </div>
@@ -736,7 +739,7 @@ const PlacesView = ({ data, updateData }) => {
        {isFoodCategory(place.category) && (place.menu || place.priceRange) && (
         <div className="bg-orange-50 p-2 rounded-lg text-xs text-orange-800 mb-2">
          {place.menu && <span>🍴 {place.menu} </span>}
-         {place.priceRange && <span className="ml-2">💰 {formatWonRange(place.priceRange)}</span>}
+         {place.priceRange && <span className="ml-2">💰 {formatCnyRange(place.priceRange)}</span>}
         </div>
        )}
        {isFoodCategory(place.category) && place.rating > 0 && (
@@ -744,7 +747,7 @@ const PlacesView = ({ data, updateData }) => {
          {'★'.repeat(place.rating)}{'☆'.repeat(5-place.rating)} <span className="text-gray-400 font-normal">혼밥 {place.rating}.0</span>
         </p>
        )}
-       {place.fee && <p className="text-xs text-gray-600 mb-2">🎟️ 입장료: {formatWonRange(place.fee)}</p>}
+       {place.fee && <p className="text-xs text-gray-600 mb-2">🎟️ 입장료: {formatCnyRange(place.fee)}</p>}
        {(place.hoursFrom || place.hoursTo) && <p className="text-xs text-gray-600 mb-2">🕒 영업시간: {place.hoursFrom||'?'} ~ {place.hoursTo||'?'}</p>}
        {place.memo && <p className="text-sm bg-gray-50 p-2 rounded-lg text-gray-700 whitespace-pre-wrap">{place.memo}</p>}
        {place.images && place.images.length > 0 && (
