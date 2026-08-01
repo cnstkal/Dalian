@@ -261,7 +261,29 @@ const App = () => {
 const ItineraryView = ({ data, updateData, apiKey, places }) => {
  const [activeDayIdx, setActiveDayIdx] = useState(0);
  const [loadingAI, setLoadingAI] = useState(false);
+ const [locatingGPS, setLocatingGPS] = useState(false);
  const activeDay = data.days[activeDayIdx];
+
+ const useCurrentLoc = !!data.useCurrentLocation;
+ const originAddress = useCurrentLoc ? (data.currentLocation || '') : (data.hotelAddress || '');
+ const originLabel = useCurrentLoc ? '현재 위치' : '호텔';
+
+ const setCurrentLocationText = (val) => updateData({ ...data, currentLocation: val });
+ const toggleUseCurrentLoc = () => updateData({ ...data, useCurrentLocation: !useCurrentLoc });
+
+ const grabGPS = () => {
+  if (!navigator.geolocation) return alert('이 기기/브라우저는 위치 확인을 지원하지 않아요.');
+  setLocatingGPS(true);
+  navigator.geolocation.getCurrentPosition(
+   (pos) => {
+    const { latitude, longitude } = pos.coords;
+    updateData({ ...data, currentLocation: `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`, useCurrentLocation: true });
+    setLocatingGPS(false);
+   },
+   (err) => { alert('위치를 가져오지 못했어요: ' + err.message); setLocatingGPS(false); },
+   { enableHighAccuracy: true, timeout: 10000 }
+  );
+ };
 
  const addDay = () => {
   const newDays = [...data.days, { id: generateId(), label:`${data.days.length+1}일차`, destinations:[] }];
@@ -309,12 +331,12 @@ const ItineraryView = ({ data, updateData, apiKey, places }) => {
 
  const predictTravel = async (destId) => {
   if (!apiKey) return alert("우측 상단 톱니바퀴에서 AI(Gemini) API 키를 먼저 입력해주세요.");
-  if (!data.hotelAddress) return alert("호텔 주소를 먼저 입력해주세요.");
+  if (!originAddress) return alert(`${originLabel} 주소를 먼저 입력해주세요.`);
   const dest = activeDay.destinations.find(d => d.id === destId);
   if (!dest || !dest.address) return alert("목적지 주소를 입력해주세요.");
   setLoadingAI(destId);
   try {
-   const prompt = `호텔 주소: ${data.hotelAddress}, 목적지 주소: ${dest.address}. 중국 대련(Dalian) 여행 중입니다. 이 두 장소 간 택시나 대중교통 이용 시 대략적인 소요 시간과 예상 비용을 예측해주세요. 반드시 아래 JSON 형식으로만 답하고, 다른 텍스트나 마크다운 코드블록은 절대 포함하지 마세요.
+   const prompt = `출발지(${originLabel}) 주소: ${originAddress}, 목적지 주소: ${dest.address}. 중국 대련(Dalian) 여행 중입니다. 이 두 장소 간 택시나 대중교통 이용 시 대략적인 소요 시간과 예상 비용을 예측해주세요. 반드시 아래 JSON 형식으로만 답하고, 다른 텍스트나 마크다운 코드블록은 절대 포함하지 마세요.
 {"duration":"약 15분 (택시 기준)","cost":"약 8,000원 (40위안)","tip":"이동수단 관련 짧은 팁 1줄, 없으면 빈 문자열"}`;
    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`, {
     method:'POST', headers:{ 'Content-Type':'application/json' },
@@ -345,6 +367,20 @@ const ItineraryView = ({ data, updateData, apiKey, places }) => {
     <input type="text" placeholder="호텔 주소 (AI 길찾기 기준점)" value={data.hotelAddress} onChange={(e) => updateData({ ...data, hotelAddress:e.target.value })} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none focus:bg-gray-100 transition-colors" />
    </div>
 
+   <div className={`p-5 rounded-2xl card-shadow border-2 transition-colors ${useCurrentLoc ? 'bg-amber-50 border-amber-200' : 'bg-white border-transparent'}`}>
+    <div className="flex items-center justify-between mb-3">
+     <h2 className="text-sm font-bold text-gray-500 flex items-center gap-2">📍 지금 내 위치 기준으로 예측</h2>
+     <button onClick={toggleUseCurrentLoc} className={`w-11 h-6 rounded-full relative transition-colors flex-shrink-0 ${useCurrentLoc ? 'bg-amber-400' : 'bg-gray-200'}`}>
+      <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${useCurrentLoc ? 'translate-x-[22px]' : 'translate-x-0.5'}`}></span>
+     </button>
+    </div>
+    <div className="flex gap-2">
+     <input type="text" placeholder="현재 위치 주소 (직접 입력 또는 GPS로 가져오기)" value={data.currentLocation||''} onChange={(e) => setCurrentLocationText(e.target.value)} className="flex-1 bg-white/70 p-3 rounded-lg text-sm outline-none border border-amber-100" />
+     <button onClick={grabGPS} disabled={locatingGPS} className="flex-shrink-0 px-3 rounded-lg bg-amber-400 text-white text-xs font-bold disabled:opacity-50">{locatingGPS ? '확인중...' : 'GPS'}</button>
+    </div>
+    <p className="text-[10px] text-amber-500 mt-2">{useCurrentLoc ? '지금은 이 위치를 기준으로 소요시간/비용을 예측해요.' : '켜면 호텔 대신 이 위치를 기준으로 예측해요. 위치가 바뀔 때마다 다시 설정하세요.'}</p>
+   </div>
+
    <div className="flex gap-2 overflow-x-auto pb-2 -mx-2 px-2">
     {data.days.map((day, idx) => (
      <DayTab key={day.id} day={day} idx={idx} isActive={idx===activeDayIdx} onClick={() => setActiveDayIdx(idx)} onDelete={() => deleteDay(idx)} />
@@ -354,12 +390,12 @@ const ItineraryView = ({ data, updateData, apiKey, places }) => {
 
    <div className="space-y-4">
     {activeDay.destinations.map((dest, index) => (
-     <div key={dest.id} className="bg-white p-4 rounded-2xl card-shadow relative">
-      <button onClick={() => removeDestination(dest.id)} className="absolute top-4 right-4 text-gray-300 hover:text-red-400"><Icons.Trash /></button>
-      <div className="flex items-center gap-3 mb-3">
+     <div key={dest.id} className="bg-white p-4 rounded-2xl card-shadow">
+      <div className="flex items-center gap-2 mb-3">
        <div className="w-6 h-6 rounded-full bg-theme-text text-white flex items-center justify-center text-xs font-bold flex-shrink-0">{index+1}</div>
        <input type="text" placeholder="장소명" value={dest.name} onChange={(e) => updateDestination(dest.id, 'name', e.target.value)} className="font-bold text-lg outline-none flex-1 min-w-0" />
-       <input type="time" value={dest.time||''} onChange={(e) => updateDestination(dest.id, 'time', e.target.value)} className="text-xs font-bold text-theme-text bg-gray-50 rounded-lg px-2 py-1.5 outline-none flex-shrink-0" />
+       <input type="time" value={dest.time||''} onChange={(e) => updateDestination(dest.id, 'time', e.target.value)} className="text-xs font-bold text-theme-text bg-gray-50 rounded-lg px-2 py-1.5 outline-none flex-shrink-0 w-[88px]" />
+       <button onClick={() => removeDestination(dest.id)} className="text-gray-300 hover:text-red-400 flex-shrink-0 p-1"><Icons.Trash /></button>
       </div>
       {places && places.length > 0 && (
        <select onChange={(e) => { if (e.target.value) applyPlace(dest.id, e.target.value); e.target.value=''; }} defaultValue="" className="w-full text-xs text-gray-500 bg-gray-50 p-2 rounded mb-2 outline-none">
@@ -388,7 +424,7 @@ const ItineraryView = ({ data, updateData, apiKey, places }) => {
       )}
       {dest.aiPrediction && <div className="bg-gray-50 p-2.5 rounded-lg text-xs text-gray-600 mb-3 leading-relaxed">💡 {dest.aiPrediction}</div>}
       <button onClick={() => predictTravel(dest.id)} disabled={loadingAI===dest.id} className="w-full py-2 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-bold rounded-lg flex items-center justify-center gap-1 transition-colors mt-1">
-       {loadingAI===dest.id ? '예측 중...' : <><Icons.Sparkles /> 호텔에서 여기까지 소요시간/비용 예측 (AI)</>}
+       {loadingAI===dest.id ? '예측 중...' : <><Icons.Sparkles /> {originLabel}에서 여기까지 소요시간/비용 예측 (AI)</>}
       </button>
      </div>
     ))}
@@ -418,11 +454,34 @@ const StarRatingInput = ({ value, onChange }) => (
  </div>
 );
 
+const HOUR_PRESETS = [
+ { l:'오전 9-오후 6', from:'09:00', to:'18:00' },
+ { l:'오전 10-오후 8', from:'10:00', to:'20:00' },
+ { l:'오전 11-오후 10', from:'11:00', to:'22:00' },
+ { l:'24시간', from:'00:00', to:'23:59' },
+];
+const HoursInput = ({ from, to, onChange }) => (
+ <div>
+  <div className="flex gap-1.5 mb-2 flex-wrap">
+   {HOUR_PRESETS.map(p => (
+    <button key={p.l} type="button" onClick={() => onChange(p.from, p.to)} className={`px-2.5 py-1.5 rounded-full text-[11px] font-bold whitespace-nowrap ${from===p.from && to===p.to ? 'bg-theme-text text-white' : 'bg-gray-100 text-gray-500'}`}>{p.l}</button>
+   ))}
+   {(from || to) && <button type="button" onClick={() => onChange('', '')} className="px-2.5 py-1.5 rounded-full text-[11px] font-bold bg-red-50 text-red-400">지우기</button>}
+  </div>
+  <div className="flex gap-2 items-center">
+   <input type="time" value={from||''} onChange={(e) => onChange(e.target.value, to)} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+   <span className="text-gray-400 text-sm">~</span>
+   <input type="time" value={to||''} onChange={(e) => onChange(from, e.target.value)} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+  </div>
+ </div>
+);
+
 const PlacesView = ({ data, updateData }) => {
  const [search, setSearch] = useState('');
  const [filter, setFilter] = useState('전체');
  const [showForm, setShowForm] = useState(false);
- const categories = ['전체','음식점','카페','관광지','쇼핑','기타'];
+ const categories = ['전체','음식점','디저트','카페','관광지','쇼핑','기타'];
+ const isFoodCategory = (c) => c==='음식점' || c==='디저트';
  const [newPlace, setNewPlace] = useState({ name:'', category:'관광지', address:'', memo:'', fee:'', menu:'', priceRange:'', hoursFrom:'', hoursTo:'', images:[], rating:0 });
  const [editingId, setEditingId] = useState(null);
  const [editPlace, setEditPlace] = useState(null);
@@ -476,13 +535,13 @@ const PlacesView = ({ data, updateData }) => {
  const removeEditImage = (idx) => setEditPlace(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== idx) }));
 
  let filteredData = data.filter(p => (filter==='전체' || p.category===filter) && (p.name.includes(search) || p.memo.includes(search)));
- if (filter==='음식점' && sortBy==='price') {
+ if (isFoodCategory(filter) && sortBy==='price') {
   filteredData = [...filteredData].sort((a,b) => {
    const pa = parseInt((a.priceRange||'').split('~')[0]); const pb = parseInt((b.priceRange||'').split('~')[0]);
    const va = isNaN(pa) ? Infinity : pa; const vb = isNaN(pb) ? Infinity : pb;
    return va - vb;
   });
- } else if (filter==='음식점' && sortBy==='rating') {
+ } else if (isFoodCategory(filter) && sortBy==='rating') {
   filteredData = [...filteredData].sort((a,b) => (b.rating||0) - (a.rating||0));
  }
 
@@ -496,7 +555,7 @@ const PlacesView = ({ data, updateData }) => {
      <button key={c} onClick={() => { setFilter(c); setSortBy('default'); }} className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold ${filter===c?'bg-theme-text text-white':'bg-white text-gray-500 border'}`}>{c}</button>
     ))}
    </div>
-   {filter==='음식점' && (
+   {isFoodCategory(filter) && (
     <div className="flex gap-2">
      {[{k:'default',l:'기본순'},{k:'price',l:'저가순 💰'},{k:'rating',l:'혼밥별점순 ⭐'}].map(s => (
       <button key={s.k} onClick={() => setSortBy(s.k)} className={`flex-1 py-1.5 rounded-lg text-xs font-bold ${sortBy===s.k?'bg-theme-accent text-white':'bg-gray-100 text-gray-500'}`}>{s.l}</button>
@@ -523,7 +582,7 @@ const PlacesView = ({ data, updateData }) => {
      </div>
      <input type="text" placeholder="장소명 (필수)" value={newPlace.name} onChange={(e) => setNewPlace({...newPlace, name:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none font-bold" />
      <input type="text" placeholder="주소" value={newPlace.address} onChange={(e) => setNewPlace({...newPlace, address:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-     {newPlace.category==='음식점' && (
+     {isFoodCategory(newPlace.category) && (
       <div className="flex gap-2">
        <input type="text" placeholder="메인 메뉴" value={newPlace.menu} onChange={(e) => setNewPlace({...newPlace, menu:e.target.value})} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
        <div className="flex-1 flex gap-1 items-center">
@@ -533,13 +592,13 @@ const PlacesView = ({ data, updateData }) => {
        </div>
       </div>
      )}
-     {newPlace.category==='음식점' && (
+     {isFoodCategory(newPlace.category) && (
       <div className="bg-gray-50 p-3 rounded-lg">
        <label className="block text-xs font-bold text-gray-500 mb-2">혼밥 별점 (혼자 가도 괜찮은 정도)</label>
        <StarRatingInput value={newPlace.rating||0} onChange={(v) => setNewPlace({...newPlace, rating:v})} />
       </div>
      )}
-     {newPlace.category!=='음식점' && (
+     {!isFoodCategory(newPlace.category) && (
       <div className="flex gap-1 items-center">
        <input type="number" inputMode="numeric" placeholder="입장료 최소(원, 선택)" value={newPlace.fee.split('~')[0]||''} onChange={(e) => setNewPlace({...newPlace, fee: e.target.value + '~' + (newPlace.fee.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
        <span className="text-gray-400 text-xs">~</span>
@@ -547,12 +606,8 @@ const PlacesView = ({ data, updateData }) => {
       </div>
      )}
      <div>
-      <label className="block text-xs font-bold text-gray-500 mb-2">영업시간 (선택)</label>
-      <div className="flex gap-2 items-center">
-       <input type="time" value={newPlace.hoursFrom} onChange={(e) => setNewPlace({...newPlace, hoursFrom:e.target.value})} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-       <span className="text-gray-400 text-sm">~</span>
-       <input type="time" value={newPlace.hoursTo} onChange={(e) => setNewPlace({...newPlace, hoursTo:e.target.value})} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-      </div>
+      <label className="block text-xs font-bold text-gray-500 mb-2">영업시간 (선택, 버튼 탭 한 번으로 간편 설정)</label>
+      <HoursInput from={newPlace.hoursFrom} to={newPlace.hoursTo} onChange={(from, to) => setNewPlace({...newPlace, hoursFrom:from, hoursTo:to})} />
      </div>
      <textarea placeholder="메모 (팁 등)" value={newPlace.memo} onChange={(e) => setNewPlace({...newPlace, memo:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none h-24 resize-none" />
      <div>
@@ -586,7 +641,7 @@ const PlacesView = ({ data, updateData }) => {
        </div>
        <input type="text" placeholder="장소명 (필수)" value={editPlace.name} onChange={(e) => setEditPlace({...editPlace, name:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none font-bold" />
        <input type="text" placeholder="주소" value={editPlace.address} onChange={(e) => setEditPlace({...editPlace, address:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-       {editPlace.category==='음식점' && (
+       {isFoodCategory(editPlace.category) && (
         <div className="flex gap-2">
          <input type="text" placeholder="메인 메뉴" value={editPlace.menu} onChange={(e) => setEditPlace({...editPlace, menu:e.target.value})} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
         <div className="flex-1 flex gap-1 items-center">
@@ -596,13 +651,13 @@ const PlacesView = ({ data, updateData }) => {
         </div>
         </div>
        )}
-       {editPlace.category==='음식점' && (
+       {isFoodCategory(editPlace.category) && (
         <div className="bg-gray-50 p-3 rounded-lg">
          <label className="block text-xs font-bold text-gray-500 mb-2">혼밥 별점 (혼자 가도 괜찮은 정도)</label>
          <StarRatingInput value={editPlace.rating||0} onChange={(v) => setEditPlace({...editPlace, rating:v})} />
         </div>
        )}
-       {editPlace.category!=='음식점' && (
+       {!isFoodCategory(editPlace.category) && (
         <div className="flex gap-1 items-center">
          <input type="number" inputMode="numeric" placeholder="입장료 최소(원, 선택)" value={editPlace.fee.split('~')[0]||''} onChange={(e) => setEditPlace({...editPlace, fee: e.target.value + '~' + (editPlace.fee.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
          <span className="text-gray-400 text-xs">~</span>
@@ -610,12 +665,8 @@ const PlacesView = ({ data, updateData }) => {
         </div>
        )}
        <div>
-        <label className="block text-xs font-bold text-gray-500 mb-2">영업시간 (선택)</label>
-        <div className="flex gap-2 items-center">
-         <input type="time" value={editPlace.hoursFrom||''} onChange={(e) => setEditPlace({...editPlace, hoursFrom:e.target.value})} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-         <span className="text-gray-400 text-sm">~</span>
-         <input type="time" value={editPlace.hoursTo||''} onChange={(e) => setEditPlace({...editPlace, hoursTo:e.target.value})} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-        </div>
+        <label className="block text-xs font-bold text-gray-500 mb-2">영업시간 (선택, 버튼 탭 한 번으로 간편 설정)</label>
+        <HoursInput from={editPlace.hoursFrom} to={editPlace.hoursTo} onChange={(from, to) => setEditPlace({...editPlace, hoursFrom:from, hoursTo:to})} />
        </div>
        <textarea placeholder="메모 (팁 등)" value={editPlace.memo} onChange={(e) => setEditPlace({...editPlace, memo:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none h-24 resize-none" />
        <div>
@@ -643,13 +694,13 @@ const PlacesView = ({ data, updateData }) => {
         <button onClick={(e) => { e.stopPropagation(); removePlace(place.id); }} className="text-gray-300"><Icons.Trash /></button>
        </div>
        {place.address && <p className="text-xs text-gray-500 mb-2">{place.address}</p>}
-       {place.category==='음식점' && (place.menu || place.priceRange) && (
+       {isFoodCategory(place.category) && (place.menu || place.priceRange) && (
         <div className="bg-orange-50 p-2 rounded-lg text-xs text-orange-800 mb-2">
          {place.menu && <span>🍴 {place.menu} </span>}
          {place.priceRange && <span className="ml-2">💰 {formatWonRange(place.priceRange)}</span>}
         </div>
        )}
-       {place.category==='음식점' && place.rating > 0 && (
+       {isFoodCategory(place.category) && place.rating > 0 && (
         <p className="text-xs text-yellow-500 font-bold mb-2">
          {'★'.repeat(place.rating)}{'☆'.repeat(5-place.rating)} <span className="text-gray-400 font-normal">혼밥 {place.rating}.0</span>
         </p>
