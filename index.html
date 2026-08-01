@@ -128,11 +128,18 @@ const useLongPress = (callback, ms=700) => {
 const DEFAULT_DATA = {
  itinerary: { hotelName:'', hotelAddress:'', days:[{ id: generateId(), label:'1일차', destinations:[] }] },
  places: [], shopping: [], expenses: { budget:0, list:[] },
- checklist: [
-  { id: generateId(), text:'여권 챙기기', checked:false },
-  { id: generateId(), text:'비자 확인', checked:false },
-  { id: generateId(), text:'환전/알리페이 세팅', checked:false }
- ]
+ checklist: {
+  packing: [
+   { id: generateId(), text:'여권', checked:false },
+   { id: generateId(), text:'충전기/보조배터리', checked:false },
+   { id: generateId(), text:'세면도구', checked:false }
+  ],
+  prep: [
+   { id: generateId(), text:'비자 확인', checked:false },
+   { id: generateId(), text:'환전/알리페이 세팅', checked:false },
+   { id: generateId(), text:'항공권/숙소 예약 확인', checked:false }
+  ]
+ }
 };
 
 let _lightboxSetter = null;
@@ -208,7 +215,7 @@ const App = () => {
 
  if (loading) return (
   <div className="min-h-screen flex flex-col items-center justify-center bg-theme-bg">
-   <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-theme-accent to-theme-text flex items-center justify-center text-5xl shadow-xl animate-bounce">✈️</div>
+   <div className="w-24 h-24 rounded-3xl overflow-hidden shadow-xl animate-bounce"><img src="./IMG_0832.png" className="w-full h-full object-cover" /></div>
    <h1 className="mt-6 text-3xl font-extrabold tracking-tight bg-gradient-to-r from-gray-900 to-gray-500 bg-clip-text text-transparent">waygo</h1>
    <p className="mt-1 text-xs font-bold text-gray-400 tracking-widest">대련 여행</p>
    <div className="mt-8 flex gap-1.5">
@@ -964,7 +971,7 @@ const ExpensesView = ({ data, updateData }) => {
  );
 };
 
-const ChecklistView = ({ data, updateData }) => {
+const ChecklistSection = ({ title, emoji, data, updateData }) => {
  const [newTodo, setNewTodo] = useState('');
 
  const addTodo = (e) => {
@@ -981,16 +988,16 @@ const ChecklistView = ({ data, updateData }) => {
  const progress = data.length === 0 ? 0 : Math.round((checkedCount/data.length)*100);
 
  return (
-  <div className="space-y-6">
+  <div className="space-y-4">
    <div className="bg-theme-text text-white p-5 rounded-2xl shadow-md">
-    <h2 className="font-bold mb-2">출발 전 짐싸기 체크 🧳</h2>
+    <h2 className="font-bold mb-2">{title} {emoji}</h2>
     <div className="w-full bg-gray-600 h-2 rounded-full overflow-hidden mb-2">
      <div className="bg-green-400 h-full transition-all duration-500" style={{ width:`${progress}%` }}></div>
     </div>
     <p className="text-xs text-gray-300 text-right">{progress}% 완료</p>
    </div>
    <form onSubmit={addTodo} className="flex gap-2">
-    <input type="text" value={newTodo} onChange={(e)=>setNewTodo(e.target.value)} placeholder="준비물 입력..." className="flex-1 bg-white p-3 rounded-xl card-shadow outline-none text-sm" />
+    <input type="text" value={newTodo} onChange={(e)=>setNewTodo(e.target.value)} placeholder="항목 입력..." className="flex-1 bg-white p-3 rounded-xl card-shadow outline-none text-sm" />
     <button type="submit" className="bg-theme-text text-white px-5 rounded-xl font-bold shadow-md">추가</button>
    </form>
    <div className="bg-white rounded-2xl card-shadow overflow-hidden">
@@ -1002,6 +1009,21 @@ const ChecklistView = ({ data, updateData }) => {
      </div>
     ))}
    </div>
+  </div>
+ );
+};
+
+const ChecklistView = ({ data, updateData }) => {
+ const [sub, setSub] = useState('packing');
+ return (
+  <div className="space-y-4">
+   <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
+    <button onClick={() => setSub('packing')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${sub==='packing'?'bg-white shadow text-theme-text':'text-gray-400'}`}>짐 챙기기 🧳</button>
+    <button onClick={() => setSub('prep')} className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${sub==='prep'?'bg-white shadow text-theme-text':'text-gray-400'}`}>사전 준비 📋</button>
+   </div>
+   {sub==='packing'
+    ? <ChecklistSection title="짐 챙기기 체크" emoji="🧳" data={data.packing} updateData={(d) => updateData({ ...data, packing:d })} />
+    : <ChecklistSection title="사전 준비 체크" emoji="📋" data={data.prep} updateData={(d) => updateData({ ...data, prep:d })} />}
   </div>
  );
 };
