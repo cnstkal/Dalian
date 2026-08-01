@@ -517,7 +517,9 @@ const PlacesView = ({ data, updateData }) => {
  const [search, setSearch] = useState('');
  const [filter, setFilter] = useState('전체');
  const [showForm, setShowForm] = useState(false);
- const categories = ['전체','음식점','카페/디저트','관광지','쇼핑','기타'];
+ const baseCategories = ['음식점','카페/디저트','관광지','쇼핑','기타'];
+ const customCategories = [...new Set(data.map(p => p.category).filter(c => c && !baseCategories.includes(c)))];
+ const categories = ['전체', ...baseCategories, ...customCategories];
  const isFoodCategory = (c) => c==='음식점' || c==='카페/디저트';
  const [newPlace, setNewPlace] = useState({ name:'', category:'관광지', address:'', memo:'', fee:'', menu:'', priceRange:'', hoursFrom:'', hoursTo:'', images:[], rating:0 });
  const [editingId, setEditingId] = useState(null);
