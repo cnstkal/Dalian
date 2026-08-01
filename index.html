@@ -415,7 +415,7 @@ const PlacesView = ({ data, updateData }) => {
        {newPlace.images.map((img, i) => <img key={i} src={img} className="w-16 h-16 object-cover rounded-lg" />)}
       </div>
      </div>
-     <button onClick={addPlace} className="w-full bg-theme-text text-white p-3 rounded-xl font-bold">저장하기</button>
+     <button onClick={addPlace} disabled={uploading} className="w-full bg-theme-text text-white p-3 rounded-xl font-bold disabled:opacity-50">{uploading ? '사진 업로드 중...' : '저장하기'}</button>
     </div>
    )}
 
@@ -494,7 +494,7 @@ const ShoppingView = ({ data, updateData }) => {
     <div className="flex items-center justify-between">
      <input type="file" accept="image/*" onChange={handleImage} disabled={uploading} className="text-xs text-gray-500 w-1/2" />
      {uploading && <p className="text-xs text-gray-400">업로드 중...</p>}
-     <button onClick={addItem} className="bg-theme-text text-white px-4 py-2 rounded-lg text-sm font-bold">추가</button>
+     <button onClick={addItem} disabled={uploading} className="bg-theme-text text-white px-4 py-2 rounded-lg text-sm font-bold disabled:opacity-50">{uploading ? '업로드 중' : '추가'}</button>
     </div>
    </div>
    <div className="space-y-3">
