@@ -128,6 +128,7 @@ const useLongPress = (callback, ms=700) => {
 };
 
 const DEFAULT_DATA = {
+ trip: { name:'대련 여행', start:'', end:'' },
  itinerary: { hotelName:'', hotelAddress:'', days:[{ id: generateId(), label:'1일차', destinations:[] }] },
  places: [], shopping: [], expenses: { budget:0, list:[] },
  checklist: {
@@ -169,6 +170,37 @@ const formatCnyRange = (v) => {
  return `${parts[0].toLocaleString()}위안 (${toWon(parts[0])}원)`;
 };
 
+const dDay = (dateStr) => {
+ if (!dateStr) return null;
+ const diff = Math.ceil((new Date(dateStr+'T00:00:00') - new Date(new Date().toDateString())) / 86400000);
+ return diff === 0 ? 'D-DAY' : diff > 0 ? `D-${diff}` : `D+${-diff}`;
+};
+
+const TripBanner = ({ trip, updateTrip }) => {
+ const [editing, setEditing] = useState(false);
+ const t = trip || { name:'', start:'', end:'' };
+ const d = dDay(t.start);
+ if (editing) return (
+  <div className="mx-4 mt-2 p-4 rounded-3xl brand-gradient shadow-lg space-y-2">
+   <input value={t.name} onChange={e=>updateTrip({...t, name:e.target.value})} placeholder="여행 이름" className="w-full bg-white/20 placeholder-white/70 text-white font-bold text-lg rounded-lg p-2 outline-none" />
+   <div className="flex gap-2">
+    <input type="date" value={t.start} onChange={e=>updateTrip({...t, start:e.target.value})} className="flex-1 bg-white/20 text-white text-sm rounded-lg p-2 outline-none" />
+    <input type="date" value={t.end} onChange={e=>updateTrip({...t, end:e.target.value})} className="flex-1 bg-white/20 text-white text-sm rounded-lg p-2 outline-none" />
+   </div>
+   <button onClick={()=>setEditing(false)} className="w-full bg-white/90 text-theme-text font-bold text-sm rounded-lg py-2">완료</button>
+  </div>
+ );
+ return (
+  <div onClick={()=>setEditing(true)} className="mx-4 mt-2 p-5 rounded-3xl brand-gradient shadow-lg cursor-pointer relative overflow-hidden">
+   <div className="absolute -right-6 -bottom-8 w-32 h-32 bg-white/10 rounded-full"></div>
+   <div className="absolute right-8 -top-6 w-16 h-16 bg-white/10 rounded-full"></div>
+   {d && <span className="inline-block bg-white/25 text-white text-[11px] font-bold px-2.5 py-1 rounded-full mb-2">{d}</span>}
+   <h2 className="text-white text-xl font-extrabold leading-tight">{t.name || '여행 이름을 입력하세요'}</h2>
+   <p className="text-white/80 text-xs font-semibold mt-1">{t.start ? `${t.start} ~ ${t.end||'?'}` : '탭해서 날짜 설정'}</p>
+  </div>
+ );
+};
+
 const App = () => {
  const [loading, setLoading] = useState(true);
  const [activeTab, setActiveTabRaw] = useState(() => { try { return localStorage.getItem('activeTab') || 'itinerary'; } catch(e) { return 'itinerary'; } });
@@ -198,6 +230,7 @@ const App = () => {
     const saved = await window.storage.get('trip-data');
     if (saved) {
      const parsed = JSON.parse(saved.value);
+     if (!parsed.trip) parsed.trip = { name:'대련 여행', start:'', end:'' };
      if (Array.isArray(parsed.checklist)) {
       parsed.checklist = { packing: parsed.checklist, prep: [] };
      } else if (!parsed.checklist || typeof parsed.checklist !== 'object') {
@@ -246,13 +279,10 @@ const App = () => {
      {refreshing ? '새로고침 중...' : (pull > 60 ? '놓으면 새로고침' : '당겨서 새로고침')}
     </div>
    )}
-   <header className="px-6 pt-12 pb-4 flex justify-between items-center bg-theme-bg sticky top-0 z-10">
-    <div className="flex items-center gap-3">
-     <div className="w-11 h-11 rounded-2xl overflow-hidden shadow-md flex-shrink-0 ring-2 ring-white"><img src="./IMG_0832.png" className="w-full h-full object-cover" /></div>
-     <div>
-      <h1 className="text-xl font-extrabold tracking-tight brand-gradient-text leading-tight">대련 여행</h1>
-      <p className="text-[11px] font-semibold text-gray-400 tracking-wide">내 손안의 여행 플래너</p>
-     </div>
+   <header className="px-4 pt-10 pb-2 flex justify-between items-center bg-theme-bg sticky top-0 z-10">
+    <div className="flex items-center gap-2">
+     <div className="w-8 h-8 rounded-xl overflow-hidden shadow flex-shrink-0"><img src="./IMG_0832.png" className="w-full h-full object-cover" /></div>
+     <h1 className="text-lg font-extrabold tracking-tight brand-gradient-text">waygo</h1>
     </div>
     <button onClick={() => setShowSettings(!showSettings)} className="text-theme-primary p-2 opacity-50 hover:opacity-100"><Icons.Settings /></button>
    </header>
@@ -265,7 +295,9 @@ const App = () => {
     </div>
    )}
 
-   <main className="flex-1 px-4">
+   <TripBanner trip={data.trip} updateTrip={(t) => updateData('trip', t)} />
+
+   <main className="flex-1 px-4 mt-4">
     {activeTab === 'itinerary' && <ItineraryView data={data.itinerary} updateData={(d) => updateData('itinerary', d)} apiKey={geminiKey} places={data.places} />}
     {activeTab === 'places' && <PlacesView data={data.places} updateData={(d) => updateData('places', d)} />}
     {activeTab === 'shopping' && <ShoppingView data={data.shopping} updateData={(d) => updateData('shopping', d)} />}
