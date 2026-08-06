@@ -413,7 +413,7 @@ const ItineraryView = ({ data, updateData, apiKey, places }) => {
     </div>
     <div className="flex gap-2">
      <input type="text" placeholder="현재 위치 주소 (직접 입력 또는 GPS로 가져오기)" value={data.currentLocation||''} onChange={(e) => setCurrentLocationText(e.target.value)} className="flex-1 bg-white/70 p-3 rounded-lg text-sm outline-none border border-amber-100" />
-     <button onClick={grabGPS} disabled={locatingGPS} className="flex-shrink-0 px-3 rounded-lg bg-amber-400 text-white text-xs font-bold disabled:opacity-50">{locatingGPS ? '확인중...' : 'GPS'}</button>
+     <button onClick={grabGPS} disabled={locatingGPS} className="flex-shrink-0 w-16 flex items-center justify-center rounded-lg bg-amber-400 text-white text-xs font-bold disabled:opacity-50 whitespace-nowrap">{locatingGPS ? '확인중' : 'GPS'}</button>
     </div>
     <p className="text-[10px] text-amber-500 mt-2">{useCurrentLoc ? '지금은 이 위치를 기준으로 소요시간/비용을 예측해요.' : '켜면 호텔 대신 이 위치를 기준으로 예측해요. 위치가 바뀔 때마다 다시 설정하세요.'}</p>
    </div>
@@ -549,6 +549,7 @@ const PlacesView = ({ data, updateData }) => {
  };
 
  const removePlace = (id) => { if (confirm("삭제하시겠습니까?")) updateData(data.filter(p => p.id !== id)); };
+ const toggleFavorite = (id, e) => { if (e) e.stopPropagation(); updateData(data.map(p => p.id === id ? { ...p, favorite: !p.favorite } : p)); };
 
  const [editUploading, setEditUploading] = useState(false);
  const startEdit = (place) => { setEditingId(place.id); setEditPlace({ ...place }); };
@@ -583,6 +584,7 @@ const PlacesView = ({ data, updateData }) => {
  } else if (isFoodCategory(filter) && sortBy==='rating') {
   filteredData = [...filteredData].sort((a,b) => (b.rating||0) - (a.rating||0));
  }
+ filteredData = [...filteredData].sort((a,b) => (b.favorite?1:0) - (a.favorite?1:0));
 
  return (
   <div className="space-y-4">
@@ -623,13 +625,13 @@ const PlacesView = ({ data, updateData }) => {
      <input type="text" placeholder="중국어 이름 (선택, 예: 星巴克)" value={newPlace.nameCn} onChange={(e) => setNewPlace({...newPlace, nameCn:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
      <input type="text" placeholder="주소" value={newPlace.address} onChange={(e) => setNewPlace({...newPlace, address:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
      {isFoodCategory(newPlace.category) && (
-      <div className="flex gap-2">
-       <input type="text" placeholder="메인 메뉴" value={newPlace.menu} onChange={(e) => setNewPlace({...newPlace, menu:e.target.value})} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-       <div className="flex-1 flex gap-1 items-center">
-        <input type="number" inputMode="numeric" placeholder="최소금액(위안)" value={newPlace.priceRange.split('~')[0]||''} onChange={(e) => setNewPlace({...newPlace, priceRange: e.target.value + '~' + (newPlace.priceRange.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-        <span className="text-gray-400 text-xs">~</span>
-        <input type="number" inputMode="numeric" placeholder="최대금액(위안)" value={newPlace.priceRange.split('~')[1]||''} onChange={(e) => setNewPlace({...newPlace, priceRange: (newPlace.priceRange.split('~')[0]||'') + '~' + e.target.value})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-       </div>
+      <input type="text" placeholder="메인 메뉴" value={newPlace.menu} onChange={(e) => setNewPlace({...newPlace, menu:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+     )}
+     {isFoodCategory(newPlace.category) && (
+      <div className="flex gap-2 items-center">
+       <input type="number" inputMode="numeric" placeholder="최소금액(위안)" value={newPlace.priceRange.split('~')[0]||''} onChange={(e) => setNewPlace({...newPlace, priceRange: e.target.value + '~' + (newPlace.priceRange.split('~')[1]||'')})} className="flex-1 min-w-0 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+       <span className="text-gray-400 text-xs flex-shrink-0">~</span>
+       <input type="number" inputMode="numeric" placeholder="최대금액(위안)" value={newPlace.priceRange.split('~')[1]||''} onChange={(e) => setNewPlace({...newPlace, priceRange: (newPlace.priceRange.split('~')[0]||'') + '~' + e.target.value})} className="flex-1 min-w-0 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
       </div>
      )}
      {isFoodCategory(newPlace.category) && (
@@ -683,13 +685,13 @@ const PlacesView = ({ data, updateData }) => {
        <input type="text" placeholder="중국어 이름 (선택, 예: 星巴克)" value={editPlace.nameCn||''} onChange={(e) => setEditPlace({...editPlace, nameCn:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
        <input type="text" placeholder="주소" value={editPlace.address} onChange={(e) => setEditPlace({...editPlace, address:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
        {isFoodCategory(editPlace.category) && (
-        <div className="flex gap-2">
-         <input type="text" placeholder="메인 메뉴" value={editPlace.menu} onChange={(e) => setEditPlace({...editPlace, menu:e.target.value})} className="flex-1 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-        <div className="flex-1 flex gap-1 items-center">
-         <input type="number" inputMode="numeric" placeholder="최소금액(위안)" value={editPlace.priceRange.split('~')[0]||''} onChange={(e) => setEditPlace({...editPlace, priceRange: e.target.value + '~' + (editPlace.priceRange.split('~')[1]||'')})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-         <span className="text-gray-400 text-xs">~</span>
-         <input type="number" inputMode="numeric" placeholder="최대금액(위안)" value={editPlace.priceRange.split('~')[1]||''} onChange={(e) => setEditPlace({...editPlace, priceRange: (editPlace.priceRange.split('~')[0]||'') + '~' + e.target.value})} className="w-1/2 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
-        </div>
+        <input type="text" placeholder="메인 메뉴" value={editPlace.menu} onChange={(e) => setEditPlace({...editPlace, menu:e.target.value})} className="w-full bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+       )}
+       {isFoodCategory(editPlace.category) && (
+        <div className="flex gap-2 items-center">
+         <input type="number" inputMode="numeric" placeholder="최소금액(위안)" value={editPlace.priceRange.split('~')[0]||''} onChange={(e) => setEditPlace({...editPlace, priceRange: e.target.value + '~' + (editPlace.priceRange.split('~')[1]||'')})} className="flex-1 min-w-0 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
+         <span className="text-gray-400 text-xs flex-shrink-0">~</span>
+         <input type="number" inputMode="numeric" placeholder="최대금액(위안)" value={editPlace.priceRange.split('~')[1]||''} onChange={(e) => setEditPlace({...editPlace, priceRange: (editPlace.priceRange.split('~')[0]||'') + '~' + e.target.value})} className="flex-1 min-w-0 bg-gray-50 p-3 rounded-lg text-sm outline-none" />
         </div>
        )}
        {isFoodCategory(editPlace.category) && (
@@ -726,14 +728,18 @@ const PlacesView = ({ data, updateData }) => {
        <button onClick={saveEdit} disabled={editUploading} className="w-full brand-gradient text-white p-3 rounded-xl font-bold disabled:opacity-50">저장</button>
       </div>
      ) : (
-      <div key={place.id} onClick={() => startEdit(place)} className="bg-white p-4 rounded-2xl card-shadow cursor-pointer active:opacity-80">
+      <div key={place.id} onClick={() => startEdit(place)} className={`bg-white p-4 rounded-2xl card-shadow cursor-pointer active:opacity-80 ${place.favorite ? 'border-2 border-yellow-300' : ''}`}>
        <div className="flex justify-between items-start mb-2">
         <div>
          <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-1 rounded-md font-bold">{place.category}</span>
+         {place.favorite && <span className="text-[10px] bg-yellow-100 text-yellow-600 px-2 py-1 rounded-md font-bold ml-1">⭐ 즐겨찾기</span>}
          <h4 className="font-bold text-lg mt-1">{place.name}</h4>
          {place.nameCn && <p className="text-xs text-gray-400">{place.nameCn}</p>}
         </div>
-        <button onClick={(e) => { e.stopPropagation(); removePlace(place.id); }} className="text-gray-300"><Icons.Trash /></button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+         <button onClick={(e) => toggleFavorite(place.id, e)} className={`text-2xl leading-none ${place.favorite ? 'text-yellow-400' : 'text-gray-300'}`}>{place.favorite ? '★' : '☆'}</button>
+         <button onClick={(e) => { e.stopPropagation(); removePlace(place.id); }} className="text-gray-300"><Icons.Trash /></button>
+        </div>
        </div>
        {place.address && <p className="text-xs text-gray-500 mb-2">{place.address}</p>}
        {isFoodCategory(place.category) && (place.menu || place.priceRange) && (
